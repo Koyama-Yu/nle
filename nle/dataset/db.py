@@ -226,7 +226,12 @@ def create(filename=DB):
                 endtime     INTEGER,
                 gender0     TEXT,
                 align0      TEXT,
-                flags       TEXT
+                flags       TEXT,
+                inv_pickups_by_name TEXT,
+                inv_pickups_by_class TEXT,
+                inv_uses_by_action TEXT,
+                inv_uses_by_name TEXT,
+                inv_uses_by_class TEXT
             )
             """
         )

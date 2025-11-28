@@ -1,5 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 import enum
+import json
 import logging
 import os
 import random
@@ -13,6 +14,7 @@ import gym
 import numpy as np
 
 from nle import nethack
+from nle.env.inventory import InventoryStatsTracker
 
 logger = logging.getLogger(__name__)
 
@@ -296,9 +298,11 @@ class NLE(gym.Env):
             ttyrec = self._ttyrec_pattern % 0
             # Create an xlogfile with the same format of name.
             scoreprefix = ttyrec.replace("0" + ttyrec_version, "")
+            self._xlogfile_path = scoreprefix + "xlogfile"
         else:
             ttyrec = None
             scoreprefix = None
+            self._xlogfile_path = None
 
         self.nethack = nethack.Nethack(
             observation_keys=self._observation_keys,
@@ -315,6 +319,20 @@ class NLE(gym.Env):
 
         # -1 so that it's 0-based on first reset
         self._episode = -1
+
+        inv_strs_index = (
+            self._observation_keys.index("inv_strs")
+            if "inv_strs" in self._observation_keys
+            else None
+        )
+        inv_oclasses_index = (
+            self._observation_keys.index("inv_oclasses")
+            if "inv_oclasses" in self._observation_keys
+            else None
+        )
+        self._inventory_tracker = InventoryStatsTracker(
+            inv_strs_index, inv_oclasses_index
+        )
 
         space_dict = dict(NLE_SPACE_ITEMS)
         self.observation_space = gym.spaces.Dict(
@@ -365,6 +383,11 @@ class NLE(gym.Env):
 
         self._steps += 1
 
+        if self._inventory_tracker:
+            self._inventory_tracker.record_step(
+                self.actions[action], observation
+            )
+
         self.last_observation = observation
 
         if self._check_abort(observation):
@@ -385,6 +408,11 @@ class NLE(gym.Env):
         info = {}
         info["end_status"] = end_status
         info["is_ascended"] = self.nethack.how_done() == nethack.ASCENDED
+        if done and self._inventory_tracker:
+            metadata = self._inventory_tracker.finalize_episode()
+            if metadata:
+                info["inventory_metadata"] = metadata
+                self._write_inventory_metadata(metadata)
 
         return self._get_observation(observation), reward, done, info
 
@@ -431,6 +459,9 @@ class NLE(gym.Env):
                 "Not in moveloop after 1000 tries, aborting (ttyrec: %s)." % new_ttyrec
             )
             return self.reset(wizkit_items=wizkit_items)
+
+        if self._inventory_tracker:
+            self._inventory_tracker.start_episode(self.last_observation)
 
         return self._get_observation(self.last_observation)
 
@@ -516,6 +547,38 @@ class NLE(gym.Env):
             return "\n".join([line.tobytes().decode("utf-8") for line in chars])
 
         return super().render(mode=mode)
+
+    def _write_inventory_metadata(self, metadata):
+        if not self._xlogfile_path:
+            return
+        serialized = self._format_inventory_metadata(metadata)
+        if not serialized:
+            return
+        try:
+            with open(self._xlogfile_path, "r+", encoding="utf-8") as xlog:
+                lines = xlog.readlines()
+                if not lines:
+                    return
+                lines[-1] = lines[-1].rstrip("\n") + "\t" + serialized + "\n"
+                xlog.seek(0)
+                xlog.truncate()
+                xlog.writelines(lines)
+        except OSError as exc:
+            logger.warning(
+                "Unable to append inventory metadata to %s: %s",
+                self._xlogfile_path,
+                exc,
+            )
+
+    @staticmethod
+    def _format_inventory_metadata(metadata):
+        fields = []
+        for key, value in metadata.items():
+            if not value:
+                continue
+            payload = json.dumps(value, separators=(",", ":"))
+            fields.append(f"{key}={payload}")
+        return "\t".join(fields)
 
     def __repr__(self):
         return "<%s>" % self.__class__.__name__

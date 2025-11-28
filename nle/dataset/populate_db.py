@@ -35,6 +35,11 @@ XLOGFILE_COLUMNS = [
     ("gender0", str),
     ("align0", str),
     ("flags", str),
+    ("inv_pickups_by_name", str),
+    ("inv_pickups_by_class", str),
+    ("inv_uses_by_action", str),
+    ("inv_uses_by_name", str),
+    ("inv_uses_by_class", str),
 ]
 
 FIVE_MINS = 5 * 60
@@ -344,6 +349,16 @@ def game_data_generator(xlogfile, filter=lambda x: x, separator="\t"):
 
             if "while" in game_data:
                 game_data["death"] += " while " + game_data["while"]
+
+            for inv_key in (
+                "inv_pickups_by_name",
+                "inv_pickups_by_class",
+                "inv_uses_by_action",
+                "inv_uses_by_name",
+                "inv_uses_by_class",
+            ):
+                if game_data.get(inv_key, -1) == -1:
+                    game_data[inv_key] = ""
 
             yield tuple(ctype(game_data[key]) for key, ctype in XLOGFILE_COLUMNS)
 
