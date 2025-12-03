@@ -40,6 +40,7 @@ XLOGFILE_COLUMNS = [
     ("inv_uses_by_action", str),
     ("inv_uses_by_name", str),
     ("inv_uses_by_class", str),
+    ("inv_items_by_name", str),
 ]
 
 FIVE_MINS = 5 * 60
@@ -356,6 +357,7 @@ def game_data_generator(xlogfile, filter=lambda x: x, separator="\t"):
                 "inv_uses_by_action",
                 "inv_uses_by_name",
                 "inv_uses_by_class",
+                "inv_items_by_name",
             ):
                 if game_data.get(inv_key, -1) == -1:
                     game_data[inv_key] = ""
@@ -370,7 +372,14 @@ def xlogfile_gen_filter(gen, ttyrecnames, ttyrecs, ttydir):
     # due to 'save_ttyrec_every' option in env.py, so filter these out.
     # If we do find a file, we will save it to be added later.
     for line in gen:
-        ttyrecname = line.decode("ascii").split("ttyrecname=")[-1].strip()
+        line_str = line.decode("latin-1").strip()
+        ttyrecname = None
+        for part in line_str.split("\t"):
+            if part.startswith("ttyrecname="):
+                ttyrecname = part.split("=", 1)[1]
+                break
+        if not ttyrecname:
+            continue
         if ttyrecname in ttyrecnames:
-            ttyrecs.append(ttydir + "/" + ttyrecname)
+            ttyrecs.append(os.path.join(ttydir, ttyrecname))
             yield line

@@ -3,7 +3,6 @@ import argparse
 import json
 from pathlib import Path
 
-
 INVENTORY_KEYS = (
     "inv_pickups_by_name",
     "inv_pickups_by_class",
@@ -70,18 +69,14 @@ def main():
         raise FileNotFoundError(f"ttyrec が見つかりません: {ttyrec_path}")
 
     xlog_path = (
-        Path(args.xlog).expanduser()
-        if args.xlog
-        else derive_xlog_path(ttyrec_path)
+        Path(args.xlog).expanduser() if args.xlog else derive_xlog_path(ttyrec_path)
     )
     if not xlog_path.exists():
         raise FileNotFoundError(f"xlogfile が見つかりません: {xlog_path}")
 
     fields = parse_xlog_line(xlog_path, ttyrec_path.name)
     if not fields:
-        raise RuntimeError(
-            f"{xlog_path} 内に ttyrecname={ttyrec_path.name} の行が見つかりません。"
-        )
+        raise RuntimeError(f"{xlog_path} 内に ttyrecname={ttyrec_path.name} の行が見つかりません。")
 
     metadata = extract_inventory_metadata(fields)
     print(f"ttyrec: {ttyrec_path}")

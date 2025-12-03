@@ -384,9 +384,7 @@ class NLE(gym.Env):
         self._steps += 1
 
         if self._inventory_tracker:
-            self._inventory_tracker.record_step(
-                self.actions[action], observation
-            )
+            self._inventory_tracker.record_step(self.actions[action], observation)
 
         self.last_observation = observation
 

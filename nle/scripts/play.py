@@ -86,6 +86,7 @@ def play():
     else:
         env = gym.make(
             FLAGS.env,
+            actions=nethack.ACTIONS,
             save_ttyrec_every=2,
             savedir=FLAGS.savedir,
             max_episode_steps=FLAGS.max_steps,
