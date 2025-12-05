@@ -205,7 +205,10 @@ nle/version.py
 nle_data/
 nle/fbs/
 nle/nethackdir
+
+# additional files
 ttyrecs_*.db
 test_inv.py
 nld_tutorial.py
 check_meta.py
+debug.txt

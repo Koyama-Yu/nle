@@ -260,6 +260,7 @@ class NLE(gym.Env):
                 logger.info("Not saving any NLE data.")
 
         self._observation_keys = list(observation_keys)
+        #print(f"Observation keys: {self._observation_keys}")
 
         if "internal" in self._observation_keys:
             logger.warn(
@@ -282,6 +283,7 @@ class NLE(gym.Env):
         self._blstats_index = self._observation_keys.index("blstats")
         self._message_index = self._observation_keys.index("message")
         self._program_state_index = self._observation_keys.index("program_state")
+        #print(f"Program state index: {self._program_state_index}")
         self._internal_index = self._observation_keys.index("internal")
 
         self._original_observation_keys = observation_keys
@@ -416,6 +418,7 @@ class NLE(gym.Env):
 
     def _in_moveloop(self, observation):
         program_state = observation[self._program_state_index]
+        #print(f"Program state: {program_state}")
         return program_state[3]  # in_moveloop
 
     def reset(self, wizkit_items=None):
@@ -453,10 +456,16 @@ class NLE(gym.Env):
             self.last_observation, done = self.nethack.step(ASCII_SPACE)
             assert not done, "Game ended unexpectedly"
         else:
-            warnings.warn(
-                "Not in moveloop after 1000 tries, aborting (ttyrec: %s)." % new_ttyrec
+            raw_message = self.last_observation[self._message_index]
+            last_message = bytes(raw_message).split(b"\0", 1)[0].decode(
+                errors="ignore"
             )
-            return self.reset(wizkit_items=wizkit_items)
+            msg = (
+                "Not in moveloop after 1000 tries, aborting "
+                f"(ttyrec: {new_ttyrec}, last_message: '{last_message}')"
+            )
+            warnings.warn(msg)
+            raise RuntimeError(msg)
 
         if self._inventory_tracker:
             self._inventory_tracker.start_episode(self.last_observation)
